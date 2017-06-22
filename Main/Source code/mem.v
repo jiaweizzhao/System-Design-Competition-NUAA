@@ -8,7 +8,7 @@
 module mem(                          // 访存级
     input              clk,          // 时钟
     input              MEM_valid,    // 访存级有效信号
-    input      [153:0] EXE_MEM_bus_r,// EXE->MEM总线
+    input      [155:0] EXE_MEM_bus_r,// EXE->MEM总线
     input      [ 31:0] dm_rdata,     // 访存读数据
     output     [ 31:0] dm_addr,      // 访存读写地址
     output reg [  3:0] dm_wen,       // 访存写使能
@@ -25,7 +25,7 @@ module mem(                          // 访存级
 );
 //-----{EXE->MEM总线}begin
     //访存需要用到的load/store信息
-    wire [3 :0] mem_control;  //MEM需要使用的控制信号
+    wire [5 :0] mem_control;  //MEM需要使用的控制信号
     wire [31:0] store_data;   //store操作的存的数据
     
     //EXE结果和HI/LO数据
@@ -68,9 +68,10 @@ module mem(                          // 访存级
 //-----{load/store访存}begin
     wire inst_load;  //load操作
     wire inst_store; //store操作
-    wire ls_word;    //load/store为字节还是字,0:byte;1:word
+    wire [1:0] ls_word;    //load/store为字节还是字,00:byte;10:word;01:half
     wire lb_sign;    //load一字节为有符号load
-    assign {inst_load,inst_store,ls_word,lb_sign} = mem_control;
+    wire lh_sign;    //load半字为有符号load
+    assign {inst_load,inst_store,ls_word,lb_sign,lh_sign} = mem_control;
 
     //访存读写地址
     assign dm_addr = exe_result;

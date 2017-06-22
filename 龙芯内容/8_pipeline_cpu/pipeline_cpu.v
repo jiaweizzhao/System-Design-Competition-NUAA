@@ -7,10 +7,10 @@
 //   > 日期  : 2016-04-14
 //*************************************************************************
 module pipeline_cpu(  // 多周期cpu
-    input clk,           // 时钟
+    input c  lk,           // 时钟
     input resetn,        // 复位信号，低电平有效
     
-    //display data
+    //display data  这里不做
     input  [ 4:0] rf_addr,
     input  [31:0] mem_addr,
     output [31:0] rf_data,
@@ -48,9 +48,9 @@ module pipeline_cpu(  // 多周期cpu
     wire WB_allow_in;
     
     // syscall和eret到达写回级时会发出cancel信号，
-    wire cancel;    // 取消已经取出的正在其他流水级执行的指令
+    wire cancel;    // 取消已经取出的正在其他流水级执行的指令  后面对各级valid进行影响
     
-    //各级允许进入信号:本级无效，或本级执行完成且下级允许进入
+    //各级允许进入信号:本级无效，或本级执行完成且下级允许进入   也就是为下一个周期做准备的信号
     assign IF_allow_in  = (IF_over & ID_allow_in) | cancel;
     assign ID_allow_in  = ~ID_valid  | (ID_over  & EXE_allow_in);
     assign EXE_allow_in = ~EXE_valid | (EXE_over & MEM_allow_in);
@@ -79,7 +79,7 @@ module pipeline_cpu(  // 多周期cpu
         end
         else if (ID_allow_in)
         begin
-            ID_valid <= IF_over;
+            ID_valid <= IF_over;  无效信息可传递给下一级   QQQ各级_over信号由哪里控制？？
         end
     end
     
@@ -122,7 +122,7 @@ module pipeline_cpu(  // 多周期cpu
         end
     end
     
-    //展示5级的valid信号
+    //展示5级的valid信号  不变
     assign cpu_5_valid = {12'd0         ,{4{IF_valid }},{4{ID_valid}},
                           {4{EXE_valid}},{4{MEM_valid}},{4{WB_valid}}};
 //-------------------------{5级流水控制信号}end--------------------------//
@@ -133,7 +133,7 @@ module pipeline_cpu(  // 多周期cpu
     wire [153:0] EXE_MEM_bus; // EXE->MEM级总线
     wire [117:0] MEM_WB_bus;  // MEM->WB级总线
     
-    //锁存以上总线信号
+    //锁存以上总线信号  这就相当于中间寄存器
     reg [ 63:0] IF_ID_bus_r;
     reg [166:0] ID_EXE_bus_r;
     reg [153:0] EXE_MEM_bus_r;
@@ -186,7 +186,7 @@ module pipeline_cpu(  // 多周期cpu
     wire [ 4:0] MEM_wdest;
     wire [ 4:0] WB_wdest;
     
-    //MEM与data_ram交互    
+    //MEM与data_ram交互    这里把Mem与Ram分开并行
     wire [ 3:0] dm_wen;
     wire [31:0] dm_addr;
     wire [31:0] dm_wdata;

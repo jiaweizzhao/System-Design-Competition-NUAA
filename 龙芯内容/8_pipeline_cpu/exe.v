@@ -89,6 +89,8 @@ module exe(                         // 执行级
         .product   (product   ),
         .mult_end  (mult_end  )
     );
+
+    
 //-----{乘法器}end
 
 //-----{EXE执行完成}begin

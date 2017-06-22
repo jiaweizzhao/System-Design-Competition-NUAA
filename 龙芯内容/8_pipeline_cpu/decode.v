@@ -5,6 +5,11 @@
 //   > 作者  : LOONGSON
 //   > 日期  : 2016-04-14
 //*************************************************************************
+
+//更改内容
+//指令列表内容需要增加
+
+
 module decode(                      // 译码级
     input              ID_valid,    // 译码级有效信号
     input      [ 63:0] IF_ID_bus_r, // IF->ID总线
@@ -18,7 +23,7 @@ module decode(                      // 译码级
     output     [166:0] ID_EXE_bus,  // ID->EXE总线
     
     //5级流水新增
-     input              IF_over,     //对于分支指令，需要该信号
+    input              IF_over,     //对于分支指令，需要该信号
     input      [  4:0] EXE_wdest,   // EXE级要写回寄存器堆的目标地址号
     input      [  4:0] MEM_wdest,   // MEM级要写回寄存器堆的目标地址号
     input      [  4:0] WB_wdest,    // WB级要写回寄存器堆的目标地址号
@@ -27,7 +32,7 @@ module decode(                      // 译码级
     output     [ 31:0] ID_pc
 );
 //-----{IF->ID总线}begin
-    wire [31:0] pc;
+    wire [31:0] pc;//当前的PC
     wire [31:0] inst;
     assign {pc, inst} = IF_ID_bus_r;  // IF->ID总线传PC和指令
 //-----{IF->ID总线}end
@@ -53,10 +58,10 @@ module decode(                      // 译码级
     assign target = inst[25:0];   // 目标地址
     assign cp0r_sel= inst[2:0];   // cp0寄存器的select域
 
-    // 实现指令列表
+    // 实现指令列表   每个指令分一个信号位  需要改变
     wire inst_ADDU, inst_SUBU , inst_SLT , inst_AND;
     wire inst_NOR , inst_OR   , inst_XOR , inst_SLL;
-    wire inst_SRL , inst_ADDIU, inst_BEQ , inst_BNE;
+    wire inst_SRL , inst_ADDIU, inst_BEQ , inst_BNE; 
     wire inst_LW  , inst_SW   , inst_LUI , inst_J;
     wire inst_SLTU, inst_JALR , inst_JR  , inst_SLLV;
     wire inst_SRA , inst_SRAV , inst_SRLV, inst_SLTIU;
@@ -125,6 +130,13 @@ module decode(                      // 译码级
     assign inst_SYSCALL = (op == 6'b000000) & (funct == 6'b001100); // 系统调用
     assign inst_ERET    = (op == 6'b010000) & (rs==5'd16) & (rt==5'd0)
                         & (rd==5'd0) & sa_zero & (funct == 6'b011000);//异常返回
+
+                              //这里添加其他的12条
+
+
+
+
+
     
     //跳转分支指令
     wire inst_jr;    //寄存器跳转指令
@@ -148,6 +160,7 @@ module decode(                      // 译码级
     wire inst_sll, inst_srl, inst_sra,inst_lui;
     assign inst_add = inst_ADDU | inst_ADDIU | inst_load
                     | inst_store | inst_j_link;            // 做加法
+                    
     assign inst_sub = inst_SUBU;                           // 减法
     assign inst_slt = inst_SLT | inst_SLTI;                // 有符号小于置位
     assign inst_sltu= inst_SLTIU | inst_SLTU;              // 无符号小于置位

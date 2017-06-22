@@ -7,9 +7,9 @@
 //*************************************************************************
 module exe(                         // 执行级
     input              EXE_valid,   // 执行级有效信号
-    input      [166:0] ID_EXE_bus_r,// ID->EXE总线
+    input      [171:0] ID_EXE_bus_r,// ID->EXE总线
     output             EXE_over,    // EXE模块执行完成
-    output     [153:0] EXE_MEM_bus, // EXE->MEM总线
+    output     [155:0] EXE_MEM_bus, // EXE->MEM总线
     
      //5级流水新增
      input             clk,       // 时钟
@@ -20,15 +20,17 @@ module exe(                         // 执行级
 );
 //-----{ID->EXE总线}begin
     //EXE需要用到的信息
-    wire multiply;            //乘法
+    wire multiply;         //乘法
+    wire divide;           //除法
+    wire sign_exe;         //乘除法有无符号
     wire mthi;             //MTHI
     wire mtlo;             //MTLO
-    wire [11:0] alu_control;
+    wire [12:0] alu_control;
     wire [31:0] alu_operand1;
     wire [31:0] alu_operand2;
 
     //访存需要用到的load/store信息
-    wire [3:0] mem_control;  //MEM需要使用的控制信号
+    wire [5:0] mem_control;  //MEM需要使用的控制信号
     wire [31:0] store_data;  //store操作的存的数据
                           
     //写回需要用到的信息
@@ -45,6 +47,8 @@ module exe(                         // 执行级
     //pc
     wire [31:0] pc;
     assign {multiply,
+            divide,
+            sign_exe,
             mthi,
             mtlo,
             alu_control,

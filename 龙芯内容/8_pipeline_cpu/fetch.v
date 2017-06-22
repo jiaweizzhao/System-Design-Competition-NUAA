@@ -4,7 +4,11 @@
 //   > 描述  :五级流水CPU的取指模块
 //   > 作者  : LOONGSON
 //   > 日期  : 2016-04-14
-//*************************************************************************
+//*************************************************************************、
+
+//更新方式：
+//没有需要改的位置 
+
 `define STARTADDR 32'H00000034   // 程序起始地址为34H
 module fetch(                    // 取指级
     input             clk,       // 时钟
@@ -18,9 +22,9 @@ module fetch(                    // 取指级
     output     [63:0] IF_ID_bus, // IF->ID总线
     
     //5级流水新增接口
-    input      [32:0] exc_bus,   // Exception pc总线
+    input      [32:0] exc_bus,   // Exception pc总线  与异常有关接口  一般是一个地址加一个信号
         
-    //展示PC和取出的指令
+    //展示PC和取出的指令  不变
     output     [31:0] IF_pc,
     output     [31:0] IF_inst
 );
@@ -38,11 +42,11 @@ module fetch(                    // 取指级
     //Exception PC
     wire        exc_valid;
     wire [31:0] exc_pc;
-    assign {exc_valid,exc_pc} = exc_bus;
+    assign {exc_valid,exc_pc} = exc_bus; // 了解总线如何分开
     
     //pc+4
     assign seq_pc[31:2]    = pc[31:2] + 1'b1;  // 下一指令地址：PC=PC+4
-    assign seq_pc[1:0]     = pc[1:0];
+    assign seq_pc[1:0]     = pc[1:0]; 
 
     // 新指令：若有Exception,则PC为Exceptio入口地址
     //         若指令跳转，则PC为跳转地址；否则为pc+4
@@ -72,6 +76,7 @@ module fetch(                    // 取指级
     //故取指模块需要两拍时间
     //故每次PC刷新，IF_over都要置0
     //然后将IF_valid锁存一拍即是IF_over信号
+    //因为IF_over是一个reg
     always @(posedge clk)
     begin
         if (!resetn || next_fetch)

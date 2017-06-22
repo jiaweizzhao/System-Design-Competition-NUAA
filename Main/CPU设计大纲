@@ -9,7 +9,7 @@ div
 divu
 multu
 bltzal
-bgezal
+bgezal  //因为跳转以后前面的指令还会正常执行  所以不影响
 break
 LH
 LHU
@@ -37,6 +37,11 @@ break
 （可参考龙芯的阻塞单元）
 
 
+
+
+注意事项
+各级over信号直观理解
+只要over为0，则说明这一级未完成，所以停住，前面的也不会变，后面的加一级气泡
 
 
 

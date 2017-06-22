@@ -15,10 +15,10 @@ module decode(                      // 译码级
     output     [ 32:0] jbr_bus,     // 跳转总线
 //  output             inst_jbr,    // 指令为跳转分支指令,五级流水不需要
     output             ID_over,     // ID模块执行完成
-    output     [166:0] ID_EXE_bus,  // ID->EXE总线
+    output     [172:0] ID_EXE_bus,  // ID->EXE总线
     
     //5级流水新增
-     input              IF_over,     //对于分支指令，需要该信号
+    input              IF_over,     //对于分支指令，需要该信号
     input      [  4:0] EXE_wdest,   // EXE级要写回寄存器堆的目标地址号
     input      [  4:0] MEM_wdest,   // MEM级要写回寄存器堆的目标地址号
     input      [  4:0] WB_wdest,    // WB级要写回寄存器堆的目标地址号
@@ -55,6 +55,7 @@ module decode(                      // 译码级
 
     // 实现指令列表
     wire inst_ADDU, inst_SUBU , inst_SLT , inst_AND;
+    wire inst_ADD , inst_SUB  , inst_ADDI, inst_DIV;
     wire inst_NOR , inst_OR   , inst_XOR , inst_SLL;
     wire inst_SRL , inst_ADDIU, inst_BEQ , inst_BNE;
     wire inst_LW  , inst_SW   , inst_LUI , inst_J;
@@ -65,13 +66,20 @@ module decode(                      // 译码级
     wire inst_ANDI, inst_ORI  , inst_XORI, inst_JAL;
     wire inst_MULT, inst_MFLO , inst_MFHI, inst_MTLO;
     wire inst_MTHI, inst_MFC0 , inst_MTC0;
-    wire inst_ERET, inst_SYSCALL;
+    wire inst_MULTU, inst_DIVU;
+    wire inst_LH, inst_LHU, inst_SH;
+    wire inst_ERET, inst_SYSCALL, inst_BREAK;
+    wire inst_BLTZAL, inst_BGEZAL;
+
+
     wire op_zero;  // 操作码全0
     wire sa_zero;  // sa域全0
     assign op_zero = ~(|op);
     assign sa_zero = ~(|sa);
     assign inst_ADDU  = op_zero & sa_zero    & (funct == 6'b100001);//无符号加法
     assign inst_SUBU  = op_zero & sa_zero    & (funct == 6'b100011);//无符号减法
+    assign inst_ADD   = op_zero & sa_zero    & (funct == 6'b100000);//有符号加法
+    assign inst_SUB   = op_zero & sa_zero    & (funct == 6'b100010);//有符号减法
     assign inst_SLT   = op_zero & sa_zero    & (funct == 6'b101010);//小于则置位
     assign inst_SLTU  = op_zero & sa_zero    & (funct == 6'b101011);//无符号小则置
     assign inst_JALR  = op_zero & (rt==5'd0) & (rd==5'd31)
@@ -90,6 +98,12 @@ module decode(                      // 译码级
     assign inst_SRLV  = op_zero & sa_zero    & (funct == 6'b000110);//变量逻辑右移
     assign inst_MULT  = op_zero & (rd==5'd0)
                       & sa_zero & (funct == 6'b011000);             //乘法
+    assign inst_MULTU  = op_zero & (rd==5'd0)
+                      & sa_zero & (funct == 6'b011001);             //无符号数乘法
+    assign inst_DIV   = op_zero & (rd==5'd0)
+                      & sa_zero & (funct == 6'b011010);             //除法
+    assign inst_DIVU  = op_zero & (rd==5'd0)
+                      & sa_zero & (funct == 6'b011011);             //无符号除法               
     assign inst_MFLO  = op_zero & (rs==5'd0) & (rt==5'd0)
                       & sa_zero & (funct == 6'b010010);             //从LO读取
     assign inst_MFHI  = op_zero & (rs==5'd0) & (rt==5'd0)
@@ -99,6 +113,7 @@ module decode(                      // 译码级
     assign inst_MTHI  = op_zero & (rt==5'd0) & (rd==5'd0)
                       & sa_zero & (funct == 6'b010001);             //向HI写数据
     assign inst_ADDIU = (op == 6'b001001);             //立即数无符号加法
+    assign inst_ADDI  = (op == 6'b001000);			   //立即数加法
     assign inst_SLTI  = (op == 6'b001010);             //小于立即数则置位
     assign inst_SLTIU = (op == 6'b001011);             //小于立即数则置位（无符号）
     assign inst_BEQ   = (op == 6'b000100);             //判断相等跳转
@@ -112,6 +127,9 @@ module decode(                      // 译码级
     assign inst_LB    = (op == 6'b100000);             //load字节（符号扩展）
     assign inst_LBU   = (op == 6'b100100);             //load字节（无符号扩展）
     assign inst_SB    = (op == 6'b101000);             //向内存存储字节
+    assign inst_LH    = (op == 6'b100001);             //从内存装载半字（符号扩展）
+    assign inst_LHU   = (op == 6'b100101);             //从内存装载半字（无符号扩展）
+    assign inst_SH    = (op == 6'b101001);             //向内存存储字
     assign inst_ANDI  = (op == 6'b001100);             //立即数与
     assign inst_LUI   = (op == 6'b001111) & (rs==5'd0);//立即数装载高半字节
     assign inst_ORI   = (op == 6'b001101);             //立即数或
@@ -125,30 +143,40 @@ module decode(                      // 译码级
     assign inst_SYSCALL = (op == 6'b000000) & (funct == 6'b001100); // 系统调用
     assign inst_ERET    = (op == 6'b010000) & (rs==5'd16) & (rt==5'd0)
                         & (rd==5'd0) & sa_zero & (funct == 6'b011000);//异常返回
+    assign inst_BREAK = 
+
+    assign inst_BLTZAL = 
+    assign inst_BGEZAL = 
+            
+            //缺少break bltzal bgezal的定义
     
     //跳转分支指令
     wire inst_jr;    //寄存器跳转指令
     wire inst_j_link;//链接跳转指令
     wire inst_jbr;   //所有分支跳转指令
     assign inst_jr     = inst_JALR | inst_JR;
-    assign inst_j_link = inst_JAL | inst_JALR;
+    assign inst_j_link = inst_JAL | inst_JALR |inst_BLTZAL | inst_BGEZAL;
     assign inst_jbr = inst_J    | inst_JAL  | inst_jr
                     | inst_BEQ  | inst_BNE  | inst_BGEZ
-                    | inst_BGTZ | inst_BLEZ | inst_BLTZ;
+                    | inst_BGTZ | inst_BLEZ | inst_BLTZ
+                    | inst_BLTZAL | inst_BGEZAL;
         
     //load store
     wire inst_load;
     wire inst_store;
-    assign inst_load  = inst_LW | inst_LB | inst_LBU;  // load指令
-    assign inst_store = inst_SW | inst_SB;             // store指令
+    assign inst_load  = inst_LW | inst_LB | inst_LBU | inst_LH | inst_LHU;  // load指令
+    assign inst_store = inst_SW | inst_SB | inst_SH;                        // store指令
     
     //alu操作分类
     wire inst_add, inst_sub, inst_slt,inst_sltu;
     wire inst_and, inst_nor, inst_or, inst_xor;
     wire inst_sll, inst_srl, inst_sra,inst_lui;
+    wire inst_overflow;
+
     assign inst_add = inst_ADDU | inst_ADDIU | inst_load
-                    | inst_store | inst_j_link;            // 做加法
-    assign inst_sub = inst_SUBU;                           // 减法
+                    | inst_store | inst_j_link |inst_ADD
+                    | inst_ADDI; 			              // 做加法
+    assign inst_sub = inst_SUBU | inst_SUB;                // 减法
     assign inst_slt = inst_SLT | inst_SLTI;                // 有符号小于置位
     assign inst_sltu= inst_SLTIU | inst_SLTU;              // 无符号小于置位
     assign inst_and = inst_AND | inst_ANDI;                // 逻辑与
@@ -159,6 +187,7 @@ module decode(                      // 译码级
     assign inst_srl = inst_SRL | inst_SRLV;                // 逻辑右移
     assign inst_sra = inst_SRA | inst_SRAV;                // 算术右移
     assign inst_lui = inst_LUI;                            // 立即数装载高位
+    assign inst_overflow = inst_ADDI | inst_ADD |inst_SUB; // 有符号溢出
     
     //使用sa域作为偏移量的移位指令
     wire inst_shf_sa;
@@ -168,30 +197,30 @@ module decode(                      // 译码级
     wire inst_imm_zero; //立即数0扩展
     wire inst_imm_sign; //立即数符号扩展
     assign inst_imm_zero = inst_ANDI  | inst_LUI  | inst_ORI | inst_XORI;
-    assign inst_imm_sign = inst_ADDIU | inst_SLTI | inst_SLTIU
-                         | inst_load | inst_store;
+    assign inst_imm_sign = inst_ADDIU |  inst_SLTI | inst_SLTIU
+                         | inst_load | inst_store | inst_ADDI;
     
     //依据目的寄存器号分类
     wire inst_wdest_rt;  // 寄存器堆写入地址为rt的指令
-    wire inst_wdest_31;  // 寄存器堆写入地址为31的指令
+    wire inst_wdest_31;  // 寄存器堆写入地址为31的指令  
     wire inst_wdest_rd;  // 寄存器堆写入地址为rd的指令
-    assign inst_wdest_rt = inst_imm_zero | inst_ADDIU | inst_SLTI
+    assign inst_wdest_rt = inst_imm_zero | inst_ADDIU | inst_SLTI | inst_ADDI
                          | inst_SLTIU | inst_load | inst_MFC0;
-    assign inst_wdest_31 = inst_JAL;
+    assign inst_wdest_31 = inst_JAL |inst_BLTZAL | inst_BGEZAL;
     assign inst_wdest_rd = inst_ADDU | inst_SUBU | inst_SLT  | inst_SLTU
                          | inst_JALR | inst_AND  | inst_NOR  | inst_OR 
                             | inst_XOR  | inst_SLL  | inst_SLLV | inst_SRA 
                          | inst_SRAV | inst_SRL  | inst_SRLV
-                         | inst_MFHI | inst_MFLO;
+                         | inst_MFHI | inst_MFLO | inst_ADD | inst_SUB;
                          
     //依据源寄存器号分类
     wire inst_no_rs;  //指令rs域非0，且不是从寄存器堆读rs的数据
     wire inst_no_rt;  //指令rt域非0，且不是从寄存器堆读rt的数据
-    assign inst_no_rs = inst_MTC0 | inst_SYSCALL | inst_ERET;
+    assign inst_no_rs = inst_MTC0 | inst_SYSCALL | inst_ERET | inst_BREAK;
     assign inst_no_rt = inst_ADDIU | inst_SLTI | inst_SLTIU
                       | inst_BGEZ  | inst_load | inst_imm_zero
                       | inst_J     | inst_JAL  | inst_MFC0
-                      | inst_SYSCALL;
+                      | inst_SYSCALL | inst_ADDI |inst_BLTZAL | inst_BGEZAL | inst_BREAK;
 //-----{指令译码}end
 
 //-----{分支指令执行}begin
@@ -217,10 +246,10 @@ module decode(                      // 译码级
     wire [31:0] br_target;
     assign br_taken = inst_BEQ  & rs_equql_rt       // 相等跳转
                     | inst_BNE  & ~rs_equql_rt      // 不等跳转
-                    | inst_BGEZ & ~rs_ltz           // 大于等于0跳转
+                    | (inst_BGEZ | inst_BGEZAL) & ~rs_ltz           // 大于等于0跳转
                     | inst_BGTZ & ~rs_ltz & ~rs_ez  // 大于0跳转
                     | inst_BLEZ & (rs_ltz | rs_ez)  // 小于等于0跳转
-                    | inst_BLTZ & rs_ltz;           // 小于0跳转
+                    | (inst_BLTZ | inst_BLTZAL) & rs_ltz;           // 小于0跳转
     // 分支跳转目标地址：PC=PC+offset<<2
     assign br_target[31:2] = bd_pc[31:2] + {{14{offset[15]}}, offset};  
     assign br_target[1:0]  = bd_pc[1:0];
@@ -253,15 +282,21 @@ module decode(                      // 译码级
 //-----{ID执行完成}end
 
 //-----{ID->EXE总线}begin
+    //这个总线其实是集中式与分布式组合的思想，虽然信号都在ID阶段生成，但是生成的每个信号只在一个阶段使用，将信号按阶段区分开，当然在每个阶段中还有信号的增添
     //EXE需要用到的信息
     wire multiply;         //乘法MULT
+    wire divide;           //除法DIV
+    wire sign_exe;         //乘除法有无符号数判断
     wire mthi;             //MTHI
     wire mtlo;             //MTLO
-    assign multiply = inst_MULT;
-    assign mthi     = inst_MTHI;
+    assign multiply = inst_MULT | inst_MULTU;
+    assign divide = inst_DIV | inst_DIVU;
+    assign sign_exe = inst_MULT | inst_DIV;
+    assign mthi     = inst_MTHI ;
     assign mtlo     = inst_MTLO;
+
     //ALU两个源操作数和控制信号
-    wire [11:0] alu_control;
+    wire [12:0] alu_control;
     wire [31:0] alu_operand1;
     wire [31:0] alu_operand2;
     
@@ -272,7 +307,8 @@ module decode(                      // 译码级
     assign alu_operand2 = inst_j_link ? 32'd8 :  
                           inst_imm_zero ? {16'd0, imm} :
                           inst_imm_sign ?  {{16{imm[15]}}, imm} : rt_value;
-    assign alu_control = {inst_add,        // ALU操作码，独热编码
+    assign alu_control = {inst_overflow,    // ALU操作码，独热编码
+                          inst_add,        
                           inst_sub,
                           inst_slt,
                           inst_sltu,
@@ -283,18 +319,23 @@ module decode(                      // 译码级
                           inst_sll,
                           inst_srl,
                           inst_sra,
-                          inst_lui};
+                          inst_lui
+                          };
+
     //访存需要用到的load/store信息
-    wire lb_sign;  //load一字节为有符号load
-    wire ls_word;  //load/store为字节还是字,0:byte;1:word
-    wire [3:0] mem_control;  //MEM需要使用的控制信号
+    wire       lb_sign;  //load一字节为有符号load
+    wire       lh_sign;  //load半字为有符号load
+    wire [1:0] ls_word;  //load/store为字节还是字还是半字,00:byte;10:word;half:01
+    wire [5:0] mem_control;  //MEM需要使用的控制信号
     wire [31:0] store_data;  //store操作的存的数据
-    assign lb_sign = inst_LB;
-    assign ls_word = inst_LW | inst_SW;
+    assign lb_sign = inst_LB ;
+    assign lh_sign = inst_LH ;
+    assign ls_word = {inst_LW | inst_SW, inst_LH | inst_SH};
     assign mem_control = {inst_load,
                           inst_store,
                           ls_word,
-                          lb_sign };
+                          lb_sign,
+                          lh_sign};
                           
     //写回需要用到的信息
     wire mfhi;
@@ -307,6 +348,7 @@ module decode(                      // 译码级
     wire       rf_wen;    //写回的寄存器写使能
     wire [4:0] rf_wdest;  //写回的目的寄存器
     assign syscall  = inst_SYSCALL;
+    assign break    = inst_BREAK;//增加一个对于break的控制信号
     assign eret     = inst_ERET;
     assign mfhi     = inst_MFHI;
     assign mflo     = inst_MFLO;
@@ -318,11 +360,11 @@ module decode(                      // 译码级
                       inst_wdest_31 ? 5'd31 :  //以便能准确判断数据相关
                       inst_wdest_rd ? rd : 5'd0;
     assign store_data = rt_value;
-    assign ID_EXE_bus = {multiply,mthi,mtlo,                   //EXE需用的信息,新增
+    assign ID_EXE_bus = {multiply,divide,sign_exe,mthi,mtlo,                   //EXE需用的信息,新增
                          alu_control,alu_operand1,alu_operand2,//EXE需用的信息
                          mem_control,store_data,               //MEM需用的信号
                          mfhi,mflo,                            //WB需用的信号,新增
-                         mtc0,mfc0,cp0r_addr,syscall,eret,     //WB需用的信号,新增
+                         mtc0,mfc0,cp0r_addr,syscall,break,eret,     //WB需用的信号,新增
                          rf_wen, rf_wdest,                     //WB需用的信号
                          pc};                                  //PC值
 //-----{ID->EXE总线}end

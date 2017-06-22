@@ -6,10 +6,11 @@
 //   > 日期  : 2016-04-14
 //*************************************************************************
 module alu(
-    input  [11:0] alu_control,  // ALU控制信号
+    input  [12:0] alu_control,  // ALU控制信号
     input  [31:0] alu_src1,     // ALU操作数1,为补码
     input  [31:0] alu_src2,     // ALU操作数2，为补码
-    output [31:0] alu_result    // ALU结果
+    output [31:0] alu_result,   // ALU结果
+    output overflow             // 溢出处理
     );
 
     // ALU控制信号，独热码
@@ -25,7 +26,9 @@ module alu(
     wire alu_srl;   //逻辑右移
     wire alu_sra;   //算术右移
     wire alu_lui;   //高位加载
+    wire alu_overflow; //溢出
 
+    assign alu_overflow = alu_control[12];    
     assign alu_add  = alu_control[11];
     assign alu_sub  = alu_control[10];
     assign alu_slt  = alu_control[ 9];
@@ -38,6 +41,7 @@ module alu(
     assign alu_srl  = alu_control[ 2];
     assign alu_sra  = alu_control[ 1];
     assign alu_lui  = alu_control[ 0];
+
 
     wire [31:0] add_sub_result;
     wire [31:0] slt_result;
@@ -74,6 +78,8 @@ module alu(
     .result  (adder_result  ),
     .cout    (adder_cout    )
     );
+
+    assign overflow = ((adder_operand1[31] & adder_operand2[31] & ~adder_result[31]) | (~adder_operand1[31] & ~adder_operand2[31] & adder_result[31])) & alu_overflow;
 
     //加减结果
     assign add_sub_result = adder_result;

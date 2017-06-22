@@ -5,7 +5,7 @@
 //   > 作者  : LOONGSON
 //   > 日期  : 2016-04-14
 //*************************************************************************
-`define EXC_ENTER_ADDR 32'd0     // Excption入口地址，
+`define EXC_ENTER_ADDR 32'd0     // Excption入口地址，目前因为未考虑异常  故后面需要给一个地址
                                  // 此处实现的Exception只有SYSCALL
 module wb(                       // 写回级
     input          WB_valid,     // 写回级有效
@@ -17,7 +17,7 @@ module wb(                       // 写回级
 
      //5级流水新增接口
      input             clk,       // 时钟
-    input             resetn,    // 复位信号，低电平有效
+     input             resetn,    // 复位信号，低电平有效
      output [ 32:0] exc_bus,      // Exception pc总线
      output [  4:0] WB_wdest,     // WB级要写回寄存器堆的目标地址号
      output         cancel,       // syscall和eret到达写回级时会发出cancel信号，

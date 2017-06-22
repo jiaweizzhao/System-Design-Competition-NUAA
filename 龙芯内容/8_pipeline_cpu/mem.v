@@ -12,7 +12,7 @@ module mem(                          // 访存级
     input      [ 31:0] dm_rdata,     // 访存读数据
     output     [ 31:0] dm_addr,      // 访存读写地址
     output reg [  3:0] dm_wen,       // 访存写使能
-    output reg [ 31:0] dm_wdata,     // 访存写数据
+    output reg [ 31:0] dm_wdata,     // 访存写数据  需要时钟周期末才可以写
     output             MEM_over,     // MEM模块执行完成
     output     [117:0] MEM_WB_bus,   // MEM->WB总线
     
@@ -118,7 +118,7 @@ module mem(                          // 访存级
      wire [31:0] load_result;
     assign load_sign = (dm_addr[1:0]==2'd0) ? dm_rdata[ 7] :
                        (dm_addr[1:0]==2'd1) ? dm_rdata[15] :
-                       (dm_addr[1:0]==2'd2) ? dm_rdata[23] : dm_rdata[31] ;
+                       (dm_addr[1:0]==2'd2) ? dm_rdata[23] : dm_rdata[31] ;//用来判断无符号还是有符号扩展
      assign load_result[7:0] = (dm_addr[1:0]==2'd0) ? dm_rdata[ 7:0 ] :
                                (dm_addr[1:0]==2'd1) ? dm_rdata[15:8 ] :
                                (dm_addr[1:0]==2'd2) ? dm_rdata[23:16] :
@@ -127,7 +127,7 @@ module mem(                          // 访存级
 //-----{load/store访存}end
 
 //-----{MEM执行完成}begin
-    //由于数据RAM为同步读写的,
+    //由于数据RAM为同步读写的,重要   QQQ也就是说load指令需要两个周期？？
     //故对load指令，取数据时，有一拍延时
     //即发地址的下一拍时钟才能得到load的数据
     //故mem在进行load操作时有需要两拍时间才能取到数据
