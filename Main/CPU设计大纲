@@ -2,19 +2,30 @@ CPU设计大纲
 
 
 1.明确剩余未完成指令
-add
-addi
-sub
+add 完成
+addi 完成
+sub 完成 
+
 div
 divu
 multu
+添加了divide sign_exe控制信号  decode中正确  但是exe中还未完成  无法确定unsigin有什么意义
+
 bltzal
 bgezal  //因为跳转以后前面的指令还会正常执行  所以不影响
-break
+不添加任何控制信号
+
 LH
 LHU
 SH
+增加lh_sign 
+ls_word增加一位  变为2位
 
+break
+在写回控制信号中增加一位 对于break的判断
+剩余任务：
+确定端口大小是否一致
+添加三条指令编码
 2.WB阶段未完全完成，CP0寄存器存在问题
 
 syscall没有指定输入的地址
