@@ -7,9 +7,9 @@
 //*************************************************************************
 module exe(                         // 执行级
     input              EXE_valid,   // 执行级有效信号
-    input      [171:0] ID_EXE_bus_r,// ID->EXE总线
+    input      [172:0] ID_EXE_bus_r,// ID->EXE总线
     output             EXE_over,    // EXE模块执行完成
-    output     [155:0] EXE_MEM_bus, // EXE->MEM总线
+    output     [156:0] EXE_MEM_bus, // EXE->MEM总线
     
      //5级流水新增
      input             clk,       // 时钟
@@ -39,7 +39,8 @@ module exe(                         // 执行级
     wire mtc0;
     wire mfc0;
     wire [7 :0] cp0r_addr;
-    wire       syscall;   //syscall和eret在写回级有特殊的操作 
+    wire       syscall;   //syscall和eret在写回级有特殊的操作
+    wire       break; 
     wire       eret;
     wire       rf_wen;    //写回的寄存器写使能
     wire [4:0] rf_wdest;  //写回的目的寄存器
@@ -62,6 +63,7 @@ module exe(                         // 执行级
             mfc0,
             cp0r_addr,
             syscall,
+            break,
             eret,
             rf_wen,
             rf_wdest,
@@ -80,25 +82,52 @@ module exe(                         // 执行级
 //-----{ALU}end
 
 //-----{乘法器}begin
-    wire        mult_begin; 
+//乘法器采用直接IP调用 利用 * /两种运算方式
+//QQQ 现在不确定乘除法是否并行  可以在一个周期内出结果  先按可以来进行  
+//商放在前面  余数放在后面
+//   wire        mult_begin; 
+//   wire        mult_end;
     wire [63:0] product; 
-    wire        mult_end;
+
+    wire [65:0] Unproduct;
+    wire [32:0] Unalu_operand1;
+    wire [32:0] Unalu_operand2;
+
+    assign Unalu_operand1 = {1'd0,alu_operand1};
+    assign Unalu_operand2 = {1'd0,alu_operand2};
+
+    if(sign_exe)
+    begin
+        if(multiply)
+        begin
+            assign product = alu_operand1 * alu_operand2;
+        end
+        if(divide)
+        begin
+            assign product = alu_operand1 / alu_operand2;
+        end
+    end
+    else
+    begin
+        if(multiply)
+        begin
+            assign Unproduct = Unalu_operand1 * Unalu_operand2;
+            assign product = Unproduct[63:0];
+        end
+        if(divide)
+        begin
+            assign Unproduct = Unalu_operand1 / Unalu_operand2;
+            assign product = Unproduct[63:0];
+        end
+    end
     
-    assign mult_begin = multiply & EXE_valid;
-    multiply multiply_module (
-        .clk       (clk       ),
-        .mult_begin(mult_begin  ),
-        .mult_op1  (alu_operand1), 
-        .mult_op2  (alu_operand2),
-        .product   (product   ),
-        .mult_end  (mult_end  )
-    );
+
 //-----{乘法器}end
 
 //-----{EXE执行完成}begin
     //对于ALU操作，都是1拍可完成，
     //但对于乘法操作，需要多拍完成
-    assign EXE_over = EXE_valid & (~multiply | mult_end);
+    assign EXE_over = EXE_valid     // & (~multiply | mult_end);
 //-----{EXE执行完成}end
 
 //-----{EXE模块的dest值}begin
@@ -115,17 +144,18 @@ module exe(                         // 执行级
     //要写入LO的值放在lo_result里，包括MULT和MTLO指令,
     assign exe_result = mthi     ? alu_operand1 :
                         mtc0     ? alu_operand2 : 
-                        multiply ? product[63:32] : alu_result;
+                        multiply ? product[63:32] : 
+                        divide   ? product[63:32] : alu_result;
     assign lo_result  = mtlo ? alu_operand1 : product[31:0];
-    assign hi_write   = multiply | mthi;
-    assign lo_write   = multiply | mtlo;
+    assign hi_write   = multiply | mthi | divide;
+    assign lo_write   = multiply | mtlo | divide;
     
     assign EXE_MEM_bus = {mem_control,store_data,          //load/store信息和store数据
                           exe_result,                      //exe运算结果
                           lo_result,                       //乘法低32位结果，新增
                           hi_write,lo_write,               //HI/LO写使能，新增
                           mfhi,mflo,                       //WB需用的信号,新增
-                          mtc0,mfc0,cp0r_addr,syscall,eret,//WB需用的信号,新增
+                          mtc0,mfc0,cp0r_addr,syscall,break,eret,//WB需用的信号,新增
                           rf_wen,rf_wdest,                 //WB需用的信号
                           pc};                             //PC
 //-----{EXE->MEM总线}end

@@ -9,7 +9,7 @@
                                  // 此处实现的Exception只有SYSCALL
 module wb(                       // 写回级
     input          WB_valid,     // 写回级有效
-    input  [117:0] MEM_WB_bus_r, // MEM->WB总线
+    input  [118:0] MEM_WB_bus_r, // MEM->WB总线
     output         rf_wen,       // 寄存器写使能
     output [  4:0] rf_wdest,     // 寄存器写地址
     output [ 31:0] rf_wdata,     // 寄存器写数据
