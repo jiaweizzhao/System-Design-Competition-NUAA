@@ -143,10 +143,11 @@ module decode(                      // 译码级
     assign inst_SYSCALL = (op == 6'b000000) & (funct == 6'b001100); // 系统调用
     assign inst_ERET    = (op == 6'b010000) & (rs==5'd16) & (rt==5'd0)
                         & (rd==5'd0) & sa_zero & (funct == 6'b011000);//异常返回
-    assign inst_BREAK = 
 
-    assign inst_BLTZAL = 
-    assign inst_BGEZAL = 
+    assign inst_BREAK  = (op == 6'b000000) & (funct == 6'b001101); //触发断点例外
+
+    assign inst_BLTZAL = （op == 6'b000001）& (rt==5'b10000);//小于零跳转并将31号寄存器保存
+    assign inst_BGEZAL = （op == 6'b000001）& (rt==5'b10001);//大于等于零跳转并将31号寄存器保存
             
             //缺少break bltzal bgezal的定义
     

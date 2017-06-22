@@ -1,0 +1,26 @@
+各总线信号解释
+
+assign ID_EXE_bus = {multiply,divide,sign_exe,mthi,mtlo,                   //EXE需用的信息,新增
+                         alu_control,alu_operand1,alu_operand2,//EXE需用的信息
+                         mem_control,store_data,               //MEM需用的信号
+                         mfhi,mflo,                            //WB需用的信号,新增
+                         mtc0,mfc0,cp0r_addr,syscall,break,eret,     //WB需用的信号,新增
+                         rf_wen, rf_wdest,                     //WB需用的信号
+                         pc};  
+
+assign EXE_MEM_bus = {mem_control,store_data,          //load/store信息和store数据
+                          exe_result,                      //exe运算结果
+                          lo_result,                       //乘法低32位结果，新增
+                          hi_write,lo_write,               //HI/LO写使能，新增
+                          mfhi,mflo,                       //WB需用的信号,新增
+                          mtc0,mfc0,cp0r_addr,syscall,break,eret,//WB需用的信号,新增
+                          rf_wen,rf_wdest,                 //WB需用的信号
+                          pc};   
+
+assign MEM_WB_bus = {rf_wen,rf_wdest,                   // WB需要使用的信号
+                         mem_result,                        // 最终要写回寄存器的数据
+                         lo_result,                         // 乘法低32位结果，新增
+                         hi_write,lo_write,                 // HI/LO写使能，新增
+                         mfhi,mflo,                         // WB需要使用的信号,新增
+                         mtc0,mfc0,cp0r_addr,syscall,break,eret,  // WB需要使用的信号,新增
+                         pc};  
