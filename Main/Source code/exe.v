@@ -96,31 +96,33 @@ module exe(                         // Ö´ÐÐ¼¶
     assign Unalu_operand1 = {1'd0,alu_operand1};
     assign Unalu_operand2 = {1'd0,alu_operand2};
 
-    if(sign_exe)
+    always @ (*) 
     begin
-        if(multiply)
+        if(sign_exe)
         begin
-            assign product = alu_operand1 * alu_operand2;
+            if(multiply)
+            begin
+                assign product = alu_operand1 * alu_operand2;
+            end
+            if(divide)
+            begin
+                assign product = alu_operand1 / alu_operand2;
+            end
         end
-        if(divide)
+        else
         begin
-            assign product = alu_operand1 / alu_operand2;
+            if(multiply)
+            begin
+                assign Unproduct = Unalu_operand1 * Unalu_operand2;
+                assign product = Unproduct[63:0];
+            end
+            if(divide)
+            begin
+                assign Unproduct = Unalu_operand1 / Unalu_operand2;
+                assign product = Unproduct[63:0];
+            end
         end
     end
-    else
-    begin
-        if(multiply)
-        begin
-            assign Unproduct = Unalu_operand1 * Unalu_operand2;
-            assign product = Unproduct[63:0];
-        end
-        if(divide)
-        begin
-            assign Unproduct = Unalu_operand1 / Unalu_operand2;
-            assign product = Unproduct[63:0];
-        end
-    end
-    
 
 //-----{³Ë·¨Æ÷}end
 

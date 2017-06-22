@@ -68,6 +68,8 @@ module mem(                          // 访存级
 //-----{EXE->MEM总线}end
 
 //-----{load/store访存}begin
+//QQQ目前问题  
+//不知道使用的IP有几个端口  是否有其他信号接口  到时候还需要对应  目前只完成最基础的4位字节使能端口
     wire inst_load;  //load操作
     wire inst_store; //store操作
     wire [1:0] ls_word;    //load/store为字节还是字,00:byte;10:word;01:half
@@ -79,21 +81,48 @@ module mem(                          // 访存级
     assign dm_addr = exe_result;
     
     //store操作的写使能
-    always @ (*)    // 内存写使能信号
+    always @ (*)   // 内存写使能信号 写入数据  同时修改
     begin
         if (MEM_valid && inst_store) // 访存级有效时,且为store操作
         begin
-            if (ls_word)
+            if (ls_word == 2'b10)
             begin
                 dm_wen <= 4'b1111; // 存储字指令，写使能全1
+                dm_wdata <= store_data;
             end
-            else
+            else if(ls_word == 2'b01)
+            begin
+                case (dm_addr[1:0]) //其他情况不为2的整数倍 会报异常
+                    2'b00   : begin
+                        dm_wen <= 4'b0011; 
+                        dm_wdata <= {16'b0, store_data[15:0]};
+                    end
+                    2'b10   : begin
+                        dm_wen <= 4'b1100;
+                        dm_wdata <= {store_data[15:0], 16'b0};
+                    end
+                    default : dm_wen <= 4'b0000;
+                endcase
+            end
+            else 
             begin // SB指令，需要依据地址底两位，确定对应的写使能
                 case (dm_addr[1:0])
-                    2'b00   : dm_wen <= 4'b0001;
-                    2'b01   : dm_wen <= 4'b0010;
-                    2'b10   : dm_wen <= 4'b0100;
-                    2'b11   : dm_wen <= 4'b1000;
+                    2'b00   : begin
+                        dm_wen <= 4'b0001;
+                        dm_wdata <= store_data;
+                    end
+                    2'b01   : begin
+                        dm_wen <= 4'b0010; 
+                        dm_wdata <= {16'd0, store_data[7:0], 8'd0};
+                    end
+                    2'b10   : begin
+                        dm_wen <= 4'b0100;
+                        dm_wdata <= {8'd0, store_data[7:0], 16'd0};
+                    end
+                    2'b11   : begin
+                        dm_wen <= 4'b1000;
+                        dm_wdata <= {store_data[7:0], 24'd0};
+                    end
                     default : dm_wen <= 4'b0000;
                 endcase
             end
@@ -103,30 +132,35 @@ module mem(                          // 访存级
             dm_wen <= 4'b0000;
         end
     end 
-    
-    //store操作的写数据
-    always @ (*)  // 对于SB指令，需要依据地址底两位，移动store的字节至对应位置
-    begin
-        case (dm_addr[1:0])
-            2'b00   : dm_wdata <= store_data;
-            2'b01   : dm_wdata <= {16'd0, store_data[7:0], 8'd0};
-            2'b10   : dm_wdata <= {8'd0, store_data[7:0], 16'd0};
-            2'b11   : dm_wdata <= {store_data[7:0], 24'd0};
-            default : dm_wdata <= store_data;
-        endcase
-    end
-    
+        
      //load读出的数据
      wire        load_sign;
      wire [31:0] load_result;
     assign load_sign = (dm_addr[1:0]==2'd0) ? dm_rdata[ 7] :
                        (dm_addr[1:0]==2'd1) ? dm_rdata[15] :
                        (dm_addr[1:0]==2'd2) ? dm_rdata[23] : dm_rdata[31] ;
-     assign load_result[7:0] = (dm_addr[1:0]==2'd0) ? dm_rdata[ 7:0 ] :
-                               (dm_addr[1:0]==2'd1) ? dm_rdata[15:8 ] :
-                               (dm_addr[1:0]==2'd2) ? dm_rdata[23:16] :
-                                                      dm_rdata[31:24] ;
-     assign load_result[31:8]= ls_word ? dm_rdata[31:8] : {24{lb_sign & load_sign}};
+    always @ (*) 
+    if(ls_word == 2'b10)
+    begin
+        load_result = dm_rdata;
+    end
+    else if(ls_word == 2'b01)
+    begin
+        assign load_result[15:0] = (dm_addr[1:0]==2'd0) ? dm_rdata[ 15:0 ] :
+                                   (dm_addr[1:0]==2'd2) ? dm_rdata[31:16] ;
+        
+        assign load_result[31:16]= {16{lh_sign & load_sign}};   
+        
+    end
+    else
+    begin
+        assign load_result[7:0] = (dm_addr[1:0]==2'd0) ? dm_rdata[ 7:0 ] :
+                                   (dm_addr[1:0]==2'd1) ? dm_rdata[15:8 ] :
+                                   (dm_addr[1:0]==2'd2) ? dm_rdata[23:16] :
+                                                          dm_rdata[31:24] ;
+        assign load_result[31:8]= {24{lb_sign & load_sign}};                                                         
+    end
+
 //-----{load/store访存}end
 
 //-----{MEM执行完成}begin

@@ -146,8 +146,8 @@ module decode(                      // 译码级
 
     assign inst_BREAK  = (op == 6'b000000) & (funct == 6'b001101); //触发断点例外
 
-    assign inst_BLTZAL = （op == 6'b000001）& (rt==5'b10000);//小于零跳转并将31号寄存器保存
-    assign inst_BGEZAL = （op == 6'b000001）& (rt==5'b10001);//大于等于零跳转并将31号寄存器保存
+    assign inst_BLTZAL = (op == 6'b000001)& (rt==5'b10000);//小于零跳转并将31号寄存器保存
+    assign inst_BGEZAL = (op == 6'b000001)& (rt==5'b10001);//大于等于零跳转并将31号寄存器保存
             
             //缺少break bltzal bgezal的定义
     
@@ -255,7 +255,7 @@ module decode(                      // 译码级
     assign br_target[31:2] = bd_pc[31:2] + {{14{offset[15]}}, offset};  
     assign br_target[1:0]  = bd_pc[1:0];
     
-    //jump and branch指令
+    //jump and branch指令   
     wire jbr_taken;
     wire [31:0] jbr_target;
     assign jbr_taken = (j_taken | br_taken) & ID_over; 
