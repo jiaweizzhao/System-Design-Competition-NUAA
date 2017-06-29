@@ -24,3 +24,5 @@ assign MEM_WB_bus = {rf_wen,rf_wdest,                   // WB需要使用的信�
                          mfhi,mflo,                         // WB需要使用的信号,新增
                          mtc0,mfc0,cp0r_addr,syscall,break,eret,  // WB需要使用的信号,新增
                          pc};  
+
+IF_ID_bus_out = {forwardWen,[31:0]Rs_new,[31:0]Rt_new}

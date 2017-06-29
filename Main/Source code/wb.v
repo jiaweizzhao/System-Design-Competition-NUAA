@@ -9,7 +9,7 @@
                                  // 此处实现的Exception只有SYSCALL
 module wb(                       // 写回级
     input          WB_valid,     // 写回级有效
-    input  [118:0] MEM_WB_bus_r, // MEM->WB总线
+    input  [142:0] MEM_WB_bus_r, // MEM->WB总线
     output         rf_wen,       // 寄存器写使能
     output [  4:0] rf_wdest,     // 寄存器写地址
     output [ 31:0] rf_wdata,     // 寄存器写数据
@@ -17,7 +17,7 @@ module wb(                       // 写回级
 
      //5级流水新增接口
      input             clk,       // 时钟
-    input             resetn,    // 复位信号，低电平有效
+    input             resetn,     // 复位信号，低电平有效
      output [ 32:0] exc_bus,      // Exception pc总线
      output [  4:0] WB_wdest,     // WB级要写回寄存器堆的目标地址号
      output         cancel,       // syscall和eret到达写回级时会发出cancel信号，
@@ -26,8 +26,17 @@ module wb(                       // 写回级
      //展示PC和HI/LO值
      output [ 31:0] WB_pc,
      output [ 31:0] HI_data,
-     output [ 31:0] LO_data
+     output [ 31:0] LO_data,
+
+     output [55:0]  WB_out
 );
+assign WB_out = {
+                  rf_wdata,
+                  inst_j_link_W,
+                  rs,rt,rd,
+                  cal_r_W,cal_i_W,store_W,load_W,jump_W,mt_W,mf_W,lui_W
+                };
+
 //-----{MEM->WB总线}begin    
     //MEM传来的result
     wire [31:0] mem_result;
@@ -47,11 +56,27 @@ module wb(                       // 写回级
     wire mfc0;
     wire [7 :0] cp0r_addr;
     wire       syscall;   //syscall和eret在写回级有特殊的操作 
+    wire       break;
     wire       eret;
-    
+    wire       cal_r_W;
+    wire       cal_i_W;
+    wire       store_W;
+    wire       load_W;
+    wire       jump_W;
+    wire       mt_W;
+    wire       mf_W;
+    wire       lui_W;
+    wire [4:0] rs;
+    wire [4:0] rt;
+    wire [4:0] rd;
+    wire       inst_j_link_W;
     //pc
     wire [31:0] pc;    
-    assign {wen,
+    assign {
+            inst_j_link_W,
+            rs,rt,rd,
+            cal_r_W,cal_i_W,store_W,load_W,jump_W,mt_W,mf_W,lui_W,
+            wen,
             wdest,
             mem_result,
             lo_result,
@@ -63,6 +88,7 @@ module wb(                       // 写回级
             mfc0,
             cp0r_addr,
             syscall,
+            break,
             eret,
             pc} = MEM_WB_bus_r;
 //-----{MEM->WB总线}end

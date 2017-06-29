@@ -8,20 +8,23 @@
 module mem(                          // 访存级
     input              clk,          // 时钟
     input              MEM_valid,    // 访存级有效信号
-    input      [156:0] EXE_MEM_bus_r,// EXE->MEM总线
+    input      [180:0] EXE_MEM_bus_r,// EXE->MEM总线
     input      [ 31:0] dm_rdata,     // 访存读数据
     output     [ 31:0] dm_addr,      // 访存读写地址
     output reg [  3:0] dm_wen,       // 访存写使能
     output reg [ 31:0] dm_wdata,     // 访存写数据
     output             MEM_over,     // MEM模块执行完成
-    output     [118:0] MEM_WB_bus,   // MEM->WB总线
+    output     [142:0] MEM_WB_bus,   // MEM->WB总线
     
     //5级流水新增接口
     input              MEM_allow_in, // MEM级允许下级进入
     output     [  4:0] MEM_wdest,    // MEM级要写回寄存器堆的目标地址号
      
     //展示PC
-    output     [ 31:0] MEM_pc
+    output     [ 31:0] MEM_pc,
+    //转发
+    output      mf_M,
+    output      load_M
 );
 //-----{EXE->MEM总线}begin
     //访存需要用到的load/store信息
@@ -45,10 +48,28 @@ module mem(                          // 访存级
     wire       eret;
     wire       rf_wen;    //写回的寄存器写使能
     wire [4:0] rf_wdest;  //写回的目的寄存器
+
+    //转发
+    wire       cal_r_M;
+    wire       cal_i_M;
+    wire       store_M;
+    wire       load_M;
+    wire       jump_M;
+    wire       mt_M;
+    wire       mf_M;
+    wire       lui_M;
+    wire [4:0] rs;
+    wire [4:0] rt;
+    wire [4:0] rd;
+    wire       inst_j_link_M;
     
     //pc
     wire [31:0] pc;    
-    assign {mem_control,
+    assign {
+            inst_j_link_M,
+            rs,rt,rd,
+            cal_r_M,cal_i_M,store_M,load_M,jump_M,mt_M,mf_M,lui_M,        
+            mem_control,
             store_data,
             exe_result,
             lo_result,
@@ -195,7 +216,11 @@ module mem(                          // 访存级
     wire [31:0] mem_result; //MEM传到WB的result为load结果或EXE结果
     assign mem_result = inst_load ? load_result : exe_result;
     
-    assign MEM_WB_bus = {rf_wen,rf_wdest,                   // WB需要使用的信号
+    assign MEM_WB_bus = {
+                         inst_j_link_M,
+                         rs,rt,rd,
+                         cal_r_M,cal_i_M,store_M,load_M,jump_M,mt_M,mf_M,lui_M,
+                         rf_wen,rf_wdest,                   // WB需要使用的信号
                          mem_result,                        // 最终要写回寄存器的数据
                          lo_result,                         // 乘法低32位结果，新增
                          hi_write,lo_write,                 // HI/LO写使能，新增

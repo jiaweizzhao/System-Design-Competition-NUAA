@@ -15,7 +15,7 @@ module decode(                      // 译码级
     output     [ 32:0] jbr_bus,     // 跳转总线
 //  output             inst_jbr,    // 指令为跳转分支指令,五级流水不需要
     output             ID_over,     // ID模块执行完成
-    output     [172:0] ID_EXE_bus,  // ID->EXE总线
+    output     [202:0] ID_EXE_bus,  // ID->EXE总线
     
     //5级流水新增
     input              IF_over,     //对于分支指令，需要该信号
@@ -23,6 +23,15 @@ module decode(                      // 译码级
     input      [  4:0] MEM_wdest,   // MEM级要写回寄存器堆的目标地址号
     input      [  4:0] WB_wdest,    // WB级要写回寄存器堆的目标地址号
     
+
+    input             cal_r_E,
+    input             cal_i_E,
+    input             lui_E,
+    input             mf_E,
+    input             load_E,
+    input             mf_M,
+    input             load_M,
+    input             Q,
     //展示PC
     output     [ 31:0] ID_pc
 );
@@ -255,7 +264,7 @@ module decode(                      // 译码级
     assign br_target[31:2] = bd_pc[31:2] + {{14{offset[15]}}, offset};  
     assign br_target[1:0]  = bd_pc[1:0];
     
-    //jump and branch指令   
+    //jump and branch指令
     wire jbr_taken;
     wire [31:0] jbr_target;
     assign jbr_taken = (j_taken | br_taken) & ID_over; 
@@ -267,19 +276,19 @@ module decode(                      // 译码级
 
 //-----{ID执行完成}begin
     //由于是流水的，存在数据相关
-    wire rs_wait;
-    wire rt_wait;
-    assign rs_wait = ~inst_no_rs & (rs!=5'd0)
+    //wire rs_wait;
+    //wire rt_wait;
+    /*assign rs_wait = ~inst_no_rs & (rs!=5'd0)
                    & ( (rs==EXE_wdest) | (rs==MEM_wdest) | (rs==WB_wdest) );
     assign rt_wait = ~inst_no_rt & (rt!=5'd0)
-                   & ( (rt==EXE_wdest) | (rt==MEM_wdest) | (rt==WB_wdest) );
+                   & ( (rt==EXE_wdest) | (rt==MEM_wdest) | (rt==WB_wdest) );*/
     
     //对于分支跳转指令，只有在IF执行完成后，才可以算ID完成；
     //否则，ID级先完成了，而IF还在取指令，则next_pc不能锁存到PC里去，
     //那么等IF完成，next_pc能锁存到PC里去时，jbr_bus上的数据已变成无效，
     //导致分支跳转失败
     //(~inst_jbr | IF_over)即是(~inst_jbr | (inst_jbr & IF_over))
-    assign ID_over = ID_valid & ~rs_wait & ~rt_wait & (~inst_jbr | IF_over);
+    assign ID_over = ID_valid & stall & (~inst_jbr | IF_over);
 //-----{ID执行完成}end
 
 //-----{ID->EXE总线}begin
@@ -361,16 +370,131 @@ module decode(                      // 译码级
                       inst_wdest_31 ? 5'd31 :  //以便能准确判断数据相关
                       inst_wdest_rd ? rd : 5'd0;
     assign store_data = rt_value;
-    assign ID_EXE_bus = {multiply,divide,sign_exe,mthi,mtlo,                   //EXE需用的信息,新增
+    assign ID_EXE_bus = {
+                         outsa,
+                         inst_j_link,
+                         rs,rt,rd,
+                         cal_r_D,cal_i_D,store_D,load_D,jump_D,mt_D,CMPOp, ID_b_type,ID_b_zero,
+                         mf_D,lui_D,
+                         multiply,divide,sign_exe,mthi,mtlo,   //EXE需用的信息,新增
                          alu_control,alu_operand1,alu_operand2,//EXE需用的信息
                          mem_control,store_data,               //MEM需用的信号
                          mfhi,mflo,                            //WB需用的信号,新增
                          mtc0,mfc0,cp0r_addr,syscall,break,eret,     //WB需用的信号,新增
                          rf_wen, rf_wdest,                     //WB需用的信号
-                         pc};                                  //PC值
+                         pc                                   //PC值
+                        };    
+
 //-----{ID->EXE总线}end
 
 //-----{展示ID模块的PC值}begin
     assign ID_pc = pc;
 //-----{展示ID模块的PC值}end
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//stall模块
+wire stall;
+wire stall_cal_r;
+wire stall_cal_i;
+wire stall_beq;
+wire stall_jump;
+wire stall_load;
+wire stall_store;
+wire stall_mt;
+
+wire cal_r_D;
+wire cal_i_D;
+wire store_D;
+wire load_D;
+wire jump_D;
+wire mt_D;
+wire beq_D;
+wire mf_D;
+wire lui_D;
+
+wire ID_b_type;
+wire ID_b_zero;
+wire [4:0] outsa;
+wire sl;
+
+assign sl = inst_sll | inst_srl | inst_sra ;
+assign jump_D = inst_jr;
+assign cal_r_D = inst_ADD | inst_ADDU | inst_SUB |inst_SUBU |inst_SLTU | inst_SLT | inst_DIV |inst_DIVU | inst_MULT | inst_MULTU | inst_AND |inst_NOR |inst_OR | inst_XOR | inst_SLLV |inst_SLL |inst_SRAV |inst_SRA | inst_SRLV |inst_SRL;
+assign cal_i_D = inst_ADDI | inst_ADDIU | inst_SLTIU | inst_SLTI | inst_ANDI |inst_ORI | inst_XORI;
+assign beq_D = inst_BEQ | inst_BNE |inst_BGEZ |inst_BGTZ |inst_BLEZ |inst_BLTZ |inst_BGEZAL |inst_BLTZAL;
+assign load_D = inst_LB | inst_LBU | inst_LH |inst_LHU |inst_LW;
+assign store_D = inst_SB |inst_SH |inst_SW;
+assign mt_D = inst_MTHI |inst_MTLO ;
+assign lui_D = inst_LUI;
+assign mf_D = inst_MFLO | inst_MFHI;
+assign ID_b_type = inst_BEQ | inst_BNE;
+assign ID_b_zero = inst_BGEZ | inst_BGTZ |inst_BLEZ |inst_BLTZ |inst_BGEZAL |inst_BLTZAL;
+
+assign stall_beq = beq_D & ( (cal_r_E & ((rs == EXE_wdest) | (rt == EXE_wdest))) | 
+                             (cal_i_E & ((rs == EXE_wdest) | (rt == EXE_wdest))) | 
+                             (lui_E   & ((rs == EXE_wdest) | (rt == EXE_wdest))) |
+                             (mf_E    & ((rs == EXE_wdest) | (rt == EXE_wdest))) | 
+                             (load_E  & ((rs == EXE_wdest) | (rt == EXE_wdest))) |
+                             (mf_M    & ((rs == MEM_wdest) | (rt == MEM_wdest))) |
+                             (load_M  & ((rs == MEM_wdest) | (rt == MEM_wdest)))
+                           );
+
+assign stall_cal_r  = cal_r_D & (
+                                  (mf_E    & ((rs == EXE_wdest) | (rt == EXE_wdest))) |
+                                  (load_E  & ((rs == EXE_wdest) | (rt == EXE_wdest))) 
+                                ); 
+assign stall_cal_i  = cal_i_D & (
+                                  (mf_E    & (rs == EXE_wdest)) |
+                                  (load_E  & (rs == EXE_wdest)) 
+                                );
+assign stall_load   = load_D  & (
+                                  (mf_E    & (rs == EXE_wdest)) |
+                                  (load_E  & (rs == EXE_wdest))    
+                                );
+assign stall_store  = store_D & (
+                                  (mf_E    & (rs == EXE_wdest)) |
+                                  (load_E  & (rs == EXE_wdest))    
+                                );
+assign stall_jump   = jump_D  & (
+                                    (cal_r_E & (rs == EXE_wdest)) | 
+                                    (cal_i_E & (rs == EXE_wdest)) | 
+                                    (lui_E   & (rs == EXE_wdest)) |
+                                    (mf_E    & (rs == EXE_wdest)) | 
+                                    (load_E  & (rs == EXE_wdest)) |
+                                    (mf_M    & (rs == MEM_wdest)) |
+                                    (load_M  & (rs == MEM_wdest))
+                                );
+assign  stall_mt    = mt_D    & (
+                                    (cal_r_E & (rs == EXE_wdest)) | 
+                                    (cal_i_E & (rs == EXE_wdest)) | 
+                                    (lui_E   & (rs == EXE_wdest)) |
+                                    (mf_E    & (rs == EXE_wdest)) | 
+                                    (load_E  & (rs == EXE_wdest)) |
+                                    (mf_M    & (rs == MEM_wdest)) |
+                                    (load_M  & (rs == MEM_wdest))
+                                );
+assign stall =  stall_cal_r | stall_cal_i | stall_beq | stall_jump | stall_load | stall_store | stall_mt;
+
+assign outsa =  (sl) ? sa : 5'b0;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+assign CMPOp =  inst_BEQ  ? 3'b000 :
+                inst_BNE  ? 3'b001 :
+                inst_BLEZ ? 3'b010 :
+                inst_BGTZ ? 3'b011 :
+                inst_BLTZ ? 3'b100 :
+                inst_BGEZ ? 3'b101 :
+                inst_BLTZAL? 3'b110:
+                inst_BGEZAL? 3'b111;
+wire PCSel;
+wire Flush;
+
+assign PCSel = ( inst_jr  )                                 ? 2 :
+               ( inst_J    ||  inst_JAL ||  (beq_D && Q ))  ? 1 : 
+                                                              0 ;
+assign Flush = (PCSel == 1)||(PCSel == 2);
+
+
+
+
 endmodule

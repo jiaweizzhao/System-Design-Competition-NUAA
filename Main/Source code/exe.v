@@ -7,9 +7,9 @@
 //*************************************************************************
 module exe(                         // 执行级
     input              EXE_valid,   // 执行级有效信号
-    input      [172:0] ID_EXE_bus_r,// ID->EXE总线
+    input      [202:0] ID_EXE_bus_r,// ID->EXE总线
     output             EXE_over,    // EXE模块执行完成
-    output     [156:0] EXE_MEM_bus, // EXE->MEM总线
+    output     [180:0] EXE_MEM_bus, // EXE->MEM总线
     
      //5级流水新增
      input             clk,       // 时钟
@@ -17,6 +17,12 @@ module exe(                         // 执行级
  
     //展示PC
     output     [ 31:0] EXE_pc
+    //转发
+    output             cal_r_E,
+    output             cal_i_E,
+    output             lui_E,
+    output             mf_E,
+    output             load_E
 );
 //-----{ID->EXE总线}begin
     //EXE需要用到的信息
@@ -44,10 +50,33 @@ module exe(                         // 执行级
     wire       eret;
     wire       rf_wen;    //写回的寄存器写使能
     wire [4:0] rf_wdest;  //写回的目的寄存器
+
+    //转发
+    wire [4:0] rs;
+    wire [4:0] rt;
+    wire [4:0] rd;
+    wire       cal_r_E;
+    wire       cal_i_E;
+    wire       store_E;
+    wire       load_E;
+    wire       jump_E;
+    wire       mt_E;
+    wire [2:0] beq_E;
+    wire       b_type;
+    wire       b_zero;
+    wire       mf_E;
+    wire       lui_E;
+    wire       inst_j_link_E;
+    wire       sa;    
     
     //pc
     wire [31:0] pc;
-    assign {multiply,
+    assign {
+            sa,
+            inst_j_link_E,
+            rs,rt,rd,
+            cal_r_E,cal_i_E,store_E,load_E,jump_E,mt_E,beq_E,b_type,b_zero,mf_E,lui_E,        
+            multiply,
             divide,
             sign_exe,
             mthi,
@@ -152,7 +181,11 @@ module exe(                         // 执行级
     assign hi_write   = multiply | mthi | divide;
     assign lo_write   = multiply | mtlo | divide;
     
-    assign EXE_MEM_bus = {mem_control,store_data,          //load/store信息和store数据
+    assign EXE_MEM_bus = {
+                          inst_j_link_E,
+                          rs,rt,rd,
+                          cal_r_E,cal_i_E,store_E,load_E,jump_E,mt_E,mf_E,lui_E,        
+                          mem_control,store_data,          //load/store信息和store数据
                           exe_result,                      //exe运算结果
                           lo_result,                       //乘法低32位结果，新增
                           hi_write,lo_write,               //HI/LO写使能，新增
